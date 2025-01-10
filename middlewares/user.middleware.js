@@ -16,7 +16,7 @@ const clerkAuthMiddleware = requireAuth({
   },
 });
 
-const verifyAdmin = async (req, res, next) => {
+const verifyUser = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
 
   // Check if Authorization header is present
@@ -24,15 +24,6 @@ const verifyAdmin = async (req, res, next) => {
     return res.status(401).json({
       error: true,
       message: "Authorization header is missing. Please include a valid token.",
-    });
-  }
-
-  // Chack admin or not
-  const user = await clerkClient.users.getUser(req?.auth?.userId);
-  if (user?.publicMetadata?.role !== "admin") {
-    return res.status(401).json({
-      error: true,
-      message: "Authentication Error, User is not Admin",
     });
   }
 
@@ -53,14 +44,8 @@ const verifyAdmin = async (req, res, next) => {
 };
 
 // Uncomment this code to not use admin verify or middleware
-const testing = (req, res, next) => {
-    return next();
-}
+// const verifyUser = (req, res, next) => {
+//     return next();
+// }
 
-
-
-
-module.exports = verifyAdmin;
-// module.exports = testing;
-
-
+module.exports = verifyUser;

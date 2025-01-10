@@ -59,11 +59,11 @@ const productSchema = new mongoose.Schema(
       required: false,
     },
     size: {
-      type: [],
+      type: Object,
       required: false,
     },
     apparelSize: {
-      type: [],
+      type: Object,
       required: false,
     },
     colors: {
