@@ -31,14 +31,14 @@ const ProductOrderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
+      required: true,
     },
     paymentStatus: {
       type: Boolean,
-      required: true
+      required: true,
     },
     tran_id: {
       type: String,
-      required: true
     },
   },
   { timestamps: true }

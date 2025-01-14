@@ -38,6 +38,8 @@ const createOrder = async (req, res) => {
     const result = await ProductOrder.create({
       orderId: generateOrderId(),
       ...reqBody,
+      paymentStatus: false,
+      orderStatus: "processing",
     });
     res.status(201).json({ status: true, data: result });
   } catch (error) {

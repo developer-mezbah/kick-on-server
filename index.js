@@ -33,7 +33,15 @@ app.use(express.json());
 app.use(cors());
 
 // This End-pont must be used over the CLERK Middleware.
-app.post("/payment-success", paymentStatus);
+app.post("/payment-status", paymentStatus);
+app.get("/ipn", (req, res) => { 
+  try {
+    console.log("Called");
+  } catch (error) {
+    console.log(error);
+    
+  }
+});
 
 // clerk middleware
 app.use(clerkMiddleware());

@@ -1,74 +1,99 @@
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { ProductOrder } = require("../models/product-order.model");
+const { Product } = require("../models/product");
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASSWORD;
-const is_live = false; //true for live, false for sandbox
 
-function createRandomString(length) {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  const randomArray = new Uint8Array(length);
-  crypto.getRandomValues(randomArray);
-  randomArray.forEach((number) => {
-    result += chars[number % chars.length];
-  });
-  return result.toUpperCase();
+
+function isLive() {
+  if (process.env.IS_LIVE === "true") {
+    return true;
+  }
+  if (process.env.IS_LIVE === "false") {
+    return false;
+  }
 }
 
 const order = async (req, res) => {
   try {
     const reqBody = req.body;
-    const tran_id = createRandomString(10);
-    const data = {
-      total_amount: reqBody.totalPrice,
-      currency: "BDT",
-      tran_id: tran_id, // use unique tran_id for each api call
-      success_url: `${process.env.SERVER_BASE_URL}/payment-success?q=success&tran_id=${tran_id}`,
-      fail_url: `${process.env.SERVER_BASE_URL}/payment-success?q=fail`,
-      cancel_url: `${process.env.SERVER_BASE_URL}/payment-success?q=cancel`,
-      ipn_url: `${process.env.SERVER_BASE_URL}/ipn`,
-      shipping_method: "Courier",
-      product_name: "Computer.",
-      product_category: "Electronic",
-      product_profile: "general",
-      cus_name: "Customer Name",
-      cus_email: "customer@example.com",
-      cus_add1: "reqBody.customerInfo.region",
-      cus_add2: "Dhaka",
-      cus_city: "Dhaka",
-      cus_state: "Dhaka",
-      cus_postcode: "1000",
-      cus_country: "Bangladesh",
-      cus_phone: "01711111111",
-      cus_fax: "01711111111",
-      ship_name: "Customer Name",
-      ship_add1: "Dhaka",
-      ship_add2: "Dhaka",
-      ship_city: "Dhaka",
-      ship_state: "Dhaka",
-      ship_postcode: 1000,
-      ship_country: "Bangladesh",
-    };
-    const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-    sslcz.init(data).then(async (apiResponse) => {
-      // Redirect the user to payment gateway
-      let GatewayPageURL = apiResponse.GatewayPageURL;
-      res.send({ url: GatewayPageURL });
+    // console.log(reqBody);
+    const init_url = "https://sandbox.sslcommerz.com/gwprocess/v4/api.php";
+    const productAndCat =
+      reqBody.productItems.length <= 1
+        ? await Product.findOne({ _id: reqBody.productItems[0]?._id })
+        : `${reqBody.productItems.length} items.`;
 
-      // create order and make pending payment status
-      function generateOrderId() {
-        const min = 10000000000;
-        const max = 99999999999;
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-      }
-      await ProductOrder.create({
-        orderId: generateOrderId(),
-        ...reqBody,
-        tran_id,
-        paymentStatus: false,
-      });
-    });
+    const formData = new FormData();
+    formData.append("store_id", process.env.STORE_ID);
+    formData.append("store_passwd", process.env.STORE_PASSWORD);
+    formData.append("total_amount", reqBody.totalPrice);
+    formData.append("currency", "BDT");
+    formData.append("tran_id", reqBody?.tran_id);
+    formData.append(
+      "success_url",
+      `${process.env.SERVER_BASE_URL}/payment-status?q=success&tran_id=${reqBody?.tran_id}`
+    );
+    formData.append(
+      "fail_url",
+      `${process.env.SERVER_BASE_URL}/payment-status?q=fail`
+    );
+    formData.append(
+      "cancel_url",
+      `${process.env.SERVER_BASE_URL}/payment-status?q=cancel`
+    );
+    formData.append("ipn_url", `${process.env.SERVER_BASE_URL}/ipn`);
+    formData.append("shipping_method", "Courier");
+    formData.append(
+      "product_name",
+      productAndCat?.title ? productAndCat?.title : `Products ${productAndCat}`
+    );
+    formData.append(
+      "product_category",
+      productAndCat?.categoryName
+        ? productAndCat?.categoryName
+        : `Categories ${productAndCat}`
+    );
+    formData.append("product_profile", "general");
+    formData.append("cus_name", reqBody?.customerInfo.fullName);
+    formData.append("cus_email", "customer@example.com");
+    formData.append("cus_add1", reqBody?.customerInfo.address);
+    formData.append("cus_add2", "Dhaka");
+    formData.append("cus_city", "Dhaka");
+    formData.append("cus_state", "Dhaka");
+    formData.append("cus_postcode", reqBody?.customerInfo.streetAddress);
+    formData.append("cus_country", "Bangladesh");
+    formData.append("cus_phone", reqBody?.customerInfo.phoneNumber);
+    formData.append("cus_fax", "01711111111");
+    formData.append("ship_name", reqBody?.customerInfo.fullName);
+    formData.append("ship_add1", "Dhaka");
+    formData.append("ship_add2", "Dhaka");
+    formData.append("ship_city", "Dhaka");
+    formData.append("ship_state", "Dhaka");
+    formData.append("ship_postcode", 1000);
+    formData.append("ship_country", "Bangladesh");
+
+    const requestOptions = { method: "POST", body: formData };
+    const SSLRes = await fetch(init_url, requestOptions);
+    const SSLResJson = await SSLRes.json();
+    // console.log(SSLResJson);
+
+    if (SSLResJson.status === "SUCCESS") {
+      const bkash = SSLResJson.desc.find((item) => item.name === "bKash");
+      const nagad = SSLResJson.desc.find((item) => item.name === "Nagad");
+      const masterCard = SSLResJson.desc.find((item) => item.name === "MASTER");
+      const visa = SSLResJson.desc.find((item) => item.name === "VISA");
+      const rocket = SSLResJson.desc.find(
+        (item) => item.name === "DBBL Mobile Banking"
+      );
+      return res
+        .status(200)
+        .json({ status: true, url: [visa, masterCard, bkash, nagad, rocket] });
+    } else {
+      return res
+        .status(404)
+        .json({ status: false, error: "Something went wrong!" });
+    }
   } catch (error) {
     res.status(404).json({ error: error.message });
   }
