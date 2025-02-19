@@ -32,7 +32,7 @@ const paymentStatus = (req, res) => {
             if (data.status === "VALIDATED") {
               await ProductOrder.findOneAndUpdate(
                 { tran_id: tran_id },
-                { paymentStatus: true }
+                { paymentStatus: true, paymentMethod: data?.card_issuer }
               );
             }
           });

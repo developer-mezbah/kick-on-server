@@ -23,6 +23,7 @@ const deleveryInfoRouter = require("./routes/deleveryInfo.router.js");
 const productOrdeRouter = require("./routes/product.order.router.js");
 const paymentRouter = require("./routes/payment.router.js");
 const { paymentStatus } = require("./controllers/paymentStatus.constroller.js");
+const media = require("./routes/media.router.js");
 
 //app config
 const app = express();
@@ -63,6 +64,7 @@ app.use("/navbar", navbarRouter);
 app.use("/wishlist", wishlistRouter);
 app.use("/delevery-info", deleveryInfoRouter);
 app.use("/product-order", productOrdeRouter);
+app.use("/media", media);
 // payment api
 app.use("/payment", paymentRouter);
 
